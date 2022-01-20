@@ -85,7 +85,7 @@ class Square:
         """Draw the square on the window."""
         pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
 
-    def updateNeighbors(self):
+    def updateNeighbors(self, grid):
         self.neighbors = []
         # Down
         if self.row < self.total_rows - 1 and not grid[self.row+1][self.col].borderSquare():
@@ -158,7 +158,7 @@ def getClickedPosition(cursor_pos, rows, cols, screen_width, screen_height):
 
     # Calculate the grid squares
     x_gap = screen_width // cols
-    y_gap = screen_heiht // rows
+    y_gap = screen_height // rows
     # Grab the cursor position from pygame.get_pos()
     x, y = cursor_pos
     # Find the position of the cursor
@@ -176,7 +176,7 @@ def hCost(p1, p2):
     x2, y2 = p2
     return abs(x1-x2) + abs(y1-y2)
 
-def aStar(draw, grid, startpoint, end):
+def aStar(draw, grid, startpoint, endpoint):
     count = 0
     # The set of discovered squares that may need to be (re-)expanded.
     # Initially, only the start node is known.
@@ -186,11 +186,11 @@ def aStar(draw, grid, startpoint, end):
     came_from = {}
     # Find G-Cost and H-Cost
     g_cost = {square: float("inf") for row in grid for square in row}
-    g_cost[start] = 0
+    g_cost[startpoint] = 0
     f_cost = {square: float("inf") for row in grid for square in row}
-    f_cost[start] = h(start.get_pos(), end.get_pos())
+    f_cost[startpoint] = hCost(startpoint.getPosition(), endpoint.getPosition())
 
-    open_set_hash = {start}
+    open_set_hash = {startpoint}
 
     while not open_set.empty():
         for event in pygame.event.get():
@@ -200,9 +200,9 @@ def aStar(draw, grid, startpoint, end):
         current = open_set.get()[2]
         open_set_hash.remove(current)
 
-        if current == end:
-            reconstruct_path(came_from, end, draw)
-            end.make_end()
+        if current == endpoint:
+            reconstruct_path(came_from, endpoint, draw)
+            endpoint.make_end()
             return True
 
         for neighbor in current.neighbors:
@@ -211,7 +211,7 @@ def aStar(draw, grid, startpoint, end):
             if temp_g_cost < g_cost[neighbor]:
                 came_from[neighbor] = current
                 g_cost[neighbor] = temp_g_cost
-                f_cost[neighbor] = temp_g_cost + h(neighbor.get_pos(), end.get_pos())
+                f_cost[neighbor] = temp_g_cost + hCost(neighbor.getPosition(), endpoint.getPosition())
                 if neighbor not in open_set_hash:
                     count += 1
                     open_set.put((f_cost[neighbor]), count, neighbor)
@@ -220,7 +220,7 @@ def aStar(draw, grid, startpoint, end):
 
         draw()
 
-        if curren != start:
+        if current != startpoint:
             current.make_closed()
 
     return False
@@ -230,16 +230,57 @@ def main(screen, screen_width, screen_height):
     COLS = 30
     grid = drawGrid(ROWS, COLS, screen_width, screen_height)
 
-    start = None
-    end = None
+    startpoint = None
+    endpoint = None
 
-    while True:
+    program = True
+    while program:
         draw(screen, screen_width, screen_height, grid, ROWS, COLS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                program = False
 
+            # LEFT CLICK
+            if pygame.mouse.get_pressed()[0]:
+                cursor_pos = pygame.mouse.get_pos()
+                row, col = getClickedPosition(cursor_pos, ROWS, COLS, screen_width, screen_height)
+                clicked_square = grid[row][col]
+                # Sets the startpoint
+                if not startpoint and clicked_square != endpoint:
+                    startpoint = clicked_square
+                    startpoint.setStartpoint()
+                # Sets the endpoint
+                elif not endpoint and clicked_square != startpoint:
+                    endpoint = clicked_square
+                    endpoint.setEndpoint()
+                # Sets the border
+                elif clicked_square != endpoint and clicked_square != startpoint:
+                    clicked_square.setBorder()
+            # RIGHT CLICK 
+            elif pygame.mouse.get_pressed()[2]:
+                cursor_pos = pygame.mouse.get_pos()
+                row, col = getClickedPosition(cursor_pos, ROWS, COLS, screen_width, screen_height)
+                clicked_square = grid[row][col]
+                clicked_square.resetSquare()
+                if clicked_square == startpoint:
+                    startpoint = None
+                elif clicked_square == endpoint:
+                    endpoint = None
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and startpoint and endpoint:
+                    for row in grid:
+                        for square in row:
+                            square.updateNeighbors(grid)
+
+                    aStar(lambda: draw(screen,screen_width,screen_height, grid, ROWS, COLS), grid, startpoint, endpoint)
+
+                if event.key == pygame.K_c:
+                    startpoint = None
+                    endpoint = None
+                    grid = make_grid(ROWS, screen_width)
+
+    pygame.quit()
 
 if __name__ == '__main__':
     main(SCREEN, SCREEN_WIDTH, SCREEN_HEIGHT)
