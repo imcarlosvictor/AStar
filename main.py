@@ -86,19 +86,35 @@ class Square:
         pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
 
     def updateNeighbors(self):
-        pass
+        self.neighbors = []
+        # Down
+        if self.row < self.total_rows - 1 and not grid[self.row+1][self.col].borderSquare():
+            self.neighbors.append(grid[self.row + 1][self.col])
+        # Up
+        if self.row < 0 and not grid[self.row - 1][self.col].borderSquare():
+            self.neighbors.append(grid[self.row - 1][self.col])
+        # Right
+        if self.col < self.total_rows - 1 and not grid[self.row][self.col + 1].borderSquare():
+            self.neighbors.append(grid[self.row][self.col + 1])
+        # Left
+        if self.col > 0 and not grid[self.row][self.col - 1].borderSquare():
+            self.neighbors.append(grid[self.row][self.col - 1])
 
-    def __lt__(self):
-        """Operator overload / unary predicate"""
-        pass
+    def __lt__(self, other):
+        return False
 
 
+##########################################
+# GRID 
+##########################################
 def drawGrid(num_rows, num_cols, screen_width, screen_height):
     """Creates a grid of squares."""
 
     grid = [] # A multidimensional array that consists of squares
     height_square = screen_height // num_rows # Height of square
     width_square = screen_width // num_cols # Width of square
+
+    # Create a multidimensional array to store the squares
     for x in range(num_rows):
         grid.append([]) # Add row
         for y in range(num_cols):
@@ -110,19 +126,22 @@ def drawGrid(num_rows, num_cols, screen_width, screen_height):
 def drawGridLines(screen, screen_width, screen_height, num_rows, num_cols):
     """Adds grid lines to the grid"""
 
+    # Calculate the gap measurements for each axis
     x_gap = screen_width // num_cols
     y_gap = screen_height // num_rows
+    # Find and create the grid lines
     for i in range(num_rows):
-        # TODO: CHANGE
         pygame.draw.line(screen, BLACK, (0, i*y_gap), (screen_width, i*y_gap))
         for j in range(num_cols):
             pygame.draw.line(screen, BLACK, (j*x_gap, 0), (j*x_gap, screen_width))
 
 def draw(screen, screen_width, screen_height, grid, num_rows, num_cols):
     """Creates the grid by drawing a square for every position."""
+
+    # Pygame good practice to fill the window with white
     screen.fill(WHITE)
 
-    # START HERE
+    # Draw the sqaures in each position
     for row in grid:
         for square in row:
             # Draw square one the grid
@@ -131,23 +150,80 @@ def draw(screen, screen_width, screen_height, grid, num_rows, num_cols):
     drawGridLines(screen, screen_width, screen_height, num_rows, num_cols)
     pygame.display.update()
 
-def getClickedPosition():
+##########################################
+# MOUSE 
+##########################################
+def getClickedPosition(cursor_pos, rows, cols, screen_width, screen_height):
     """Returns the x and y position of the cursor."""
 
-    return get_pos()
+    # Calculate the grid squares
+    x_gap = screen_width // cols
+    y_gap = screen_heiht // rows
+    # Grab the cursor position from pygame.get_pos()
+    x, y = cursor_pos
+    # Find the position of the cursor
+    row = x // x_gap
+    col = y // y_gap
+    return row, col
 
-def hCost(start):
+##########################################
+# ALGORITHM
+##########################################
+def hCost(p1, p2):
     """Finds the distance from the end node."""
 
-    pass
+    x1, y1 = p1
+    x2, y2 = p2
+    return abs(x1-x2) + abs(y1-y2)
 
-def gCost(end):
-    """Finds the distance from the start node."""
-    pass
+def aStar(draw, grid, startpoint, end):
+    count = 0
+    # The set of discovered squares that may need to be (re-)expanded.
+    # Initially, only the start node is known.
+    open_set = PriorityQueue()
+    open_set.put(0, count, startpoint)
+    # Previously explored square
+    came_from = {}
+    # Find G-Cost and H-Cost
+    g_cost = {square: float("inf") for row in grid for square in row}
+    g_cost[start] = 0
+    f_cost = {square: float("inf") for row in grid for square in row}
+    f_cost[start] = h(start.get_pos(), end.get_pos())
 
-def fCost():
-    """Finds the optimal square to traverse."""
-    pass
+    open_set_hash = {start}
+
+    while not open_set.empty():
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+
+        current = open_set.get()[2]
+        open_set_hash.remove(current)
+
+        if current == end:
+            reconstruct_path(came_from, end, draw)
+            end.make_end()
+            return True
+
+        for neighbor in current.neighbors:
+            temp_g_cost = g_cost[current] + 1
+
+            if temp_g_cost < g_cost[neighbor]:
+                came_from[neighbor] = current
+                g_cost[neighbor] = temp_g_cost
+                f_cost[neighbor] = temp_g_cost + h(neighbor.get_pos(), end.get_pos())
+                if neighbor not in open_set_hash:
+                    count += 1
+                    open_set.put((f_cost[neighbor]), count, neighbor)
+                    open_set_hash.add(neighbor)
+                    neighbor.make_open()
+
+        draw()
+
+        if curren != start:
+            current.make_closed()
+
+    return False
 
 def main(screen, screen_width, screen_height):
     ROWS = 30
