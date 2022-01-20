@@ -133,6 +133,7 @@ def draw(screen, screen_width, screen_height, grid, num_rows, num_cols):
 
 def getClickedPosition():
     """Returns the x and y position of the cursor."""
+
     return get_pos()
 
 def hCost(start):
