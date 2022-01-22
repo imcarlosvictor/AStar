@@ -11,12 +11,12 @@ pygame.display.set_caption('A* Pathfinding Visualizer')
 # Colours for the squares. Each indicating a state
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-DARKGREY = (24,24,24)
+DARKGREY = (105,105,105)
 LIGHTGREY = (66,66,66)
-MOONRED = (255, 0, 0)
-GREEN = (13,55,13)
+GREEN = (0,128,0)
 BLUE = (0, 255, 0)
-PURPLE = (128, 165, 0)
+RED = (0, 0, 255)
+PURPLE = (128, 0, 128)
 TURQUOISE = (64, 224, 208)
 
 class Square:
@@ -54,7 +54,7 @@ class Square:
         return self.color == GREEN
 
     def endpoint(self):
-        return self.color == BLUE
+        return self.color == RED
 
     def resetSquare(self):
         """Reset an invalid (red) square to a valid (white) square"""
@@ -62,24 +62,23 @@ class Square:
 
     # -------------------------- Manipulate Square State --------------------------
 
-    def setExplored(self):
-        self.color = DARKGREY
-
-    def setUnexplored(self):
-        self.color = WHITE
-
-    def setBorder(self):
-        self.color = BLACK
-
     def setStartpoint(self):
         self.color = GREEN
 
     def setEndpoint(self):
         self.color = BLUE
 
+    def setBorder(self):
+        self.color = BLACK
+
+    def setExplored(self):
+        self.color = DARKGREY
+
+    def setUnexplored(self):
+        self.color = WHITE
+
     def setPath(self):
-        """Create a path from the startpoint to the endpoint."""
-        self.color = MOONRED
+        self.color = RED
 
     def drawSquare(self, screen):
         """Draw the square on the window."""
@@ -181,7 +180,7 @@ def aStar(draw, grid, startpoint, endpoint):
     # The set of discovered squares that may need to be (re-)expanded.
     # Initially, only the start node is known.
     open_set = PriorityQueue()
-    open_set.put(0, count, startpoint)
+    open_set.put((0, count, startpoint))
     # Previously explored square
     came_from = {}
     # Find G-Cost and H-Cost
@@ -216,7 +215,7 @@ def aStar(draw, grid, startpoint, endpoint):
                     count += 1
                     open_set.put((f_cost[neighbor]), count, neighbor)
                     open_set_hash.add(neighbor)
-                    neighbor.make_open()
+                    neighbor.setUnexplored()
 
         draw()
 
@@ -273,13 +272,12 @@ def main(screen, screen_width, screen_height):
                         for square in row:
                             square.updateNeighbors(grid)
 
-                    aStar(lambda: draw(screen,screen_width,screen_height, grid, ROWS, COLS), grid, startpoint, endpoint)
+                    aStar(lambda: draw(screen, screen_width, screen_height, grid, ROWS, COLS), grid, startpoint, endpoint)
 
                 if event.key == pygame.K_c:
                     startpoint = None
                     endpoint = None
                     grid = make_grid(ROWS, screen_width)
-
     pygame.quit()
 
 if __name__ == '__main__':
